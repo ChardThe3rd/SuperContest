@@ -1,0 +1,55 @@
+import os
+import json
+import gspread
+from google.oauth2 import service_account
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Load Google Sheets credentials
+creds = None
+creds_path = 'credentials.json'  # Replace with the path to your credentials file
+if os.path.exists(creds_path):
+    creds = service_account.Credentials.from_service_account_file(creds_path, ['https://www.googleapis.com/auth/spreadsheets'])
+
+if not creds:
+    print("No valid credentials found")
+    exit()
+
+# Authenticate with Google Sheets
+gc = gspread.authorize(creds)
+
+# Open the Google Sheet by its title
+sheet_title = 'W4PicksRaw'
+worksheet = gc.open(sheet_title).sheet1  # Replace with the name of your sheet
+
+# Fetch data from the Google Sheet
+data = worksheet.get_all_values()
+
+# Construct the email content
+email_subject = 'W4 Picks Roundup'
+email_body = '\n'.join(['\t'.join(row) for row in data])
+
+# Define your Gmail credentials
+gmail_user = 'anywhereshowdown@gmail.com'
+gmail_password = 'ChardTheChamp23!'
+
+# Create the email message
+msg = MIMEMultipart()
+msg['From'] = gmail_user
+msg['To'] = 'rjwalter010@gmail.com'  # Replace with the recipient's email address
+msg['Subject'] = email_subject
+
+msg.attach(MIMEText(email_body, 'plain'))
+
+# Send the email using Gmail
+try:
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(gmail_user, gmail_password)
+    text = msg.as_string()
+    server.sendmail(gmail_user, msg['To'], text)
+    server.quit()
+    print("Email sent successfully!")
+except Exception as e:
+    print(f"Error: {str(e)}")
